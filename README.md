@@ -1,55 +1,57 @@
-# Purpose:
+# What is cnpy ?
 
-NumPy offers the `save` method for easy saving of arrays into .npy and `savez` for zipping multiple .npy arrays together into a .npz file. 
+Simple utility class to dump data array into a .npy file
+which is directly readable by numpy/python.
 
-`cnpy` lets you read and write to these formats in C++. 
+This utility is written by Carl Rogers: https://github.com/rogersce/cnpy
 
-The motivation comes from scientific programming where large amounts of data are generated in C++ and analyzed in Python.
+The original code has been slightly refactored (cmake) to provide a pkgconfig file and an installation process.
 
-Writing to .npy has the advantage of using low-level C++ I/O (fread and fwrite) for speed and binary format for size. 
-The .npy file header takes care of specifying the size, shape, and data type of the array, so specifying the format of the data is unnecessary.
+# How to build ?
 
-Loading data written in numpy formats into C++ is equally simple, but requires you to type-cast the loaded data to the type of your choice.
+You can off-course customize the install path.
 
-# Installation:
 
-Default installation directory is /usr/local. 
-To specify a different directory, add `-DCMAKE_INSTALL_PREFIX=/path/to/install/dir` to the cmake invocation in step 4.
 
-1. get [cmake](www.cmake.org)
-2. create a build directory, say $HOME/build
-3. cd $HOME/build
-4. cmake /path/to/cnpy
-5. make
-6. make install
+```shell
+export CNPY_INSTALL_PATH=/opt/cnpy-0.2.0
+mkdir _build; cd _build
+cmake -DCMAKE_INSTALL_PREFIX=$CNPY_INSTALL_PATH ..
+make
+make install
+```
 
-# Using:
+# How to use cnpy from autotools ?
 
-To use, `#include"cnpy.h"` in your source code. Compile the source code mycode.cpp as
+Place the following lines in your .bashrc file:
 
 ```bash
-g++ -o mycode mycode.cpp -L/path/to/install/dir -lcnpy -lz --std=c++11
+export CNPY_INSTALL_PATH=/opt/cnpy-0.2.0
+export PKG_CONFIG_PATH=$CNPY_INSTALL_PATH/lib/pkgconfig:$PKG_CONFIG_PATH
+export LD_LIBRARY_PATH=$CNPY_INSTALL_PATH/lib:$LD_LIBRARY_PATH
 ```
 
-# Description:
+# Example of use
 
-There are two functions for writing data: `npy_save` and `npz_save`.
+Create data in C++, and save them into a file :
 
-There are 3 functions for reading:
-- `npy_load` will load a .npy file. 
-- `npz_load(fname)` will load a .npz and return a dictionary of NpyArray structues. 
-- `npz_load(fname,varname)` will load and return the NpyArray for data varname from the specified .npz file.
+``` c++
+//create random data
+std::complex<double>* data = new std::complex<double>[Nx*Ny*Nz];
+for(unsigned int i = 0;i < Nx*Ny*Nz;i++) data[i] = std::complex<double>(rand(),rand());
 
-The data structure for loaded data is below. 
-Data is accessed via the `data<T>()`-method, which returns a pointer of the specified type (which must match the underlying datatype of the data). 
-The array shape and word size are read from the npy header.
+//save it to file
+const unsigned int shape[] = {Nz,Ny,Nx};
+cnpy::npy_save("arr1.npy",data,shape,3,"w");
 
-```c++
-struct NpyArray {
-    std::vector<size_t> shape;
-    size_t word_size;
-    template<typename T> T* data();
-};
 ```
 
-See [example1.cpp](example1.cpp) for examples of how to use the library. example1 will also be build during cmake installation.
+reload data in python :
+
+``` python
+import numpy as np
+
+# reload data and make it a numpy array
+data = np.load('arr1.npy')
+```
+

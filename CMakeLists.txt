@@ -1,30 +1,54 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 3.0 FATAL_ERROR)
-if(COMMAND cmake_policy)
-	cmake_policy(SET CMP0003 NEW)
-endif(COMMAND cmake_policy)
+cmake_minimum_required(VERSION 3.10)
 
-project(CNPY)
+set(PROJECT_LANGUAGES ${PROJECT_LANGUAGES} C CXX)
+project(cnpy VERSION 0.2.0 LANGUAGES ${PROJECT_LANGUAGES})
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+# default local cmake macro repository
+list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-option(ENABLE_STATIC "Build static (.a) library" ON)
+# always export compile commands database
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# set C++14 standard as default
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
+
+# zlib is required as a public dependency
 find_package(ZLIB REQUIRED)
 
-include_directories(${ZLIB_INCLUDE_DIRS})
+# gnu compatibility,
+# see https://cmake.org/cmake/help/latest/module/GNUInstallDirs.html
+include(GNUInstallDirs)
 
-add_library(cnpy SHARED "cnpy.cpp")
-target_link_libraries(cnpy ${ZLIB_LIBRARIES})
-install(TARGETS "cnpy" LIBRARY DESTINATION lib PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+# macro helper to generate pkg-config file
+include(generate_pkg_config)
 
-if(ENABLE_STATIC)
-    add_library(cnpy-static STATIC "cnpy.cpp")
-    set_target_properties(cnpy-static PROPERTIES OUTPUT_NAME "cnpy")
-    install(TARGETS "cnpy-static" ARCHIVE DESTINATION lib)
-endif(ENABLE_STATIC)
+# build sources
+add_subdirectory(src)
+add_subdirectory(example)
 
-install(FILES "cnpy.h" DESTINATION include)
-install(FILES "mat2npz" "npy2mat" "npz2mat" DESTINATION bin PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 
-add_executable(example1 example1.cpp)
-target_link_libraries(example1 cnpy)
+##################### PRINT CONFIGURE STATUS ######################
+message("//===================================================")
+message("// ${PROJECT_NAME} build configuration:")
+message("// ${PROJECT_NAME} version : ${PROJECT_VERSION}")
+message("//===================================================")
+message("  CMake version          : ${CMAKE_VERSION}")
+if (NOT CMAKE_BUILD_TYPE)
+  message("  CMake build type       : NOT SET !")
+else()
+  message("  CMake build type       : ${CMAKE_BUILD_TYPE}")
+endif()
+message("  CMake install prefix   : ${CMAKE_INSTALL_PREFIX}")
+message("  CMake cross-compiling  ? ${CMAKE_CROSSCOMPILING}")
+if (CMAKE_CROSSCOMPILING)
+  message("  cross-compiling target architecture : ${MY_CROSS_COMPILE_TARGET}")
+endif()
+message("  CMake system processor : ${CMAKE_SYSTEM_PROCESSOR}")
+message("  CMake system name (OS) : ${CMAKE_SYSTEM_NAME}")
+message("  C++ Compiler : ${CMAKE_CXX_COMPILER_ID} "
+  "${CMAKE_CXX_COMPILER_VERSION} "
+  "${CMAKE_CXX_COMPILER_WRAPPER}")
+message("    ${CMAKE_CXX_COMPILER}")
+message("")
+message(" ZLIB found : ${ZLIB_FOUND}")
